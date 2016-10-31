@@ -1,0 +1,55 @@
+---
+title: "RepData_PA1"
+author: "Scott Cogswell"
+date: "10/31/2016"
+output: html_document
+---
+
+This report presents an analysis of activity monitoring data collected by a 
+volunteer;
+it should satisfy the requirement for the first peer assessment of the 
+Reproducible Research course.
+
+The objective is to answer the following questions:
+
+* What is the mean number of steps taken each day
+* What is the average daily activity pattern?
+
+## Data
+
+Our source data is from a personal activity monitoring device which collects 
+the number of steps taken during every 5 minute interval throughout the day,
+giving 288 observations per day.
+
+The original dataset is 
+[Activity monitoring data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip) [52K]
+which includes the number of steps, the date, and the time interval.
+The first step is to unzip the file, creating **activity.csv**.
+
+## Methodology
+
+The first step is to load the data and calculate the mean number of steps
+per day.
+```{r LoadData}
+actData <- read.csv("activity.csv")
+stepsPerDay <- aggregate(steps ~ date, data=actData, FUN=sum)
+```
+
+Eight days have no data whatsoever, these are ignored in this step.
+
+```{r Histogram, echo=FALSE}
+hh <- hist(stepsPerDay$steps, main="Histogram of steps per day", xlab="steps per day")
+```
+
+The histogram values are shown in the table below
+```{r Table, echo=FALSE}
+for (ii in 1:length(hh$counts)) {
+  cat(sprintf("up to %5d: %3d\n", hh$breaks[ii+1], hh$counts[ii]))
+}
+```
+
+The daily mean and median:
+```{r}
+mean(stepsPerDay$steps, na.rm=T)
+median(stepsPerDay$steps, na.rm=T)
+``` 
