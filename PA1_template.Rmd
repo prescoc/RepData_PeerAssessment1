@@ -8,18 +8,101 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r LoadData}
+actData <- read.csv("activity.csv", stringsAsFactors=F)
+stepsPerDay <- aggregate(steps ~ date, data=actData, FUN=sum)
+```
 
+```{r Histogram, echo=FALSE}
+hh <- hist(stepsPerDay$steps, main="Histogram of steps per day", xlab="steps per day")
+```
+
+The histogram values are shown in the table below
+```{r Table, echo=FALSE}
+for (ii in 1:length(hh$counts)) {
+  cat(sprintf("up to %5d: %3d\n", hh$breaks[ii+1], hh$counts[ii]))
+}
+```
 
 ## What is mean total number of steps taken per day?
 
-
+```{r}
+mean(stepsPerDay$steps, na.rm=T)
+median(stepsPerDay$steps, na.rm=T)
+``` 
 
 ## What is the average daily activity pattern?
 
+```{r Intervals}
+stepsPerInterval <- aggregate(steps ~ interval, data=actData, FUN=mean, na.rm=T)
+```
 
+```{r IntervalPlot, echo=FALSE}
+plot(stepsPerInterval$steps, type='l', main="Mean number of steps per interval",
+     xlab="Interval number (1-288)", ylab="mean number of steps")
+```
+
+Which interval has, on average across all the dates, 
+the largest number of steps?
+
+```{r MaxSteps}
+which(stepsPerInterval$steps == max(stepsPerInterval$steps))
+```
 
 ## Imputing missing values
 
+A number of days have missing values:
+```{r MissingValues}
+table(is.na(actData$steps))
+```
+
+Fill with interval mean for same weekday
+
+```{r FillData}
+actData$Weekday <- factor(weekdays(as.Date(actData$date,format="%Y-%m-%d")), 
+                          levels=c("Monday","Tuesday","Wednesday","Thursday",
+                                   "Friday","Saturday","Sunday"), ordered=T)
+
+dailyMean <- lapply(split(actData, actData$Weekday), 
+                    function(d) aggregate(steps ~ interval, data=d, FUN=mean, na.rm=T))
+actSplit <- split(actData, actData$Weekday)
+for (wd in names(actSplit)) {
+  actSplit[[wd]]$filled <- dailyMean[[wd]]$steps[match(actSplit[[wd]]$interval,dailyMean[[wd]]$interval)]
+  actSplit[[wd]]$filled[!is.na(actSplit[[wd]]$steps)] <- actSplit[[wd]]$steps[!is.na(actSplit[[wd]]$steps)]
+}
+fillData <- unsplit(actSplit, actData$Weekday)
+filledPerDay <- aggregate(filled ~ date, data=fillData, FUN=sum)
+```
+
+Having filled in missing values, the number of steps histogram is
+```{r FilledHist, echo=FALSE}
+hf <- hist(filledPerDay$filled, main="Filled steps per day", xlab="steps per day")
+```
+
+The corresponding mean and median are:
+
+```{r FilledMeanMedian}
+mean(filledPerDay$filled)
+median(filledPerDay$filled)
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+We classify observations into weekday and weekend dates.
+
+```{r Weekends}
+fillData$Weekend <- as.character(fillData$Weekday) %in% c("Saturday","Sunday")
+fillData$dayType <- "weekday"
+fillData$dayType[fillData$Weekend] <- "weekend"
+fillData$dayType <- factor(fillData$dayType)
+aggData <- tapply(fillData$filled, list(fillData$dayType, fillData$interval), mean)
+```
+
+The different patterns are:
+
+```{r PlotWeekends, echo=FALSE}
+par(mfrow=c(2,1))
+plot(aggData[1,], type='l', main="Weekday", xlab="Interval", ylab="steps")
+plot(aggData[2,], type='l', main="Weekend", xlab="Interval", ylab="steps")
+```
